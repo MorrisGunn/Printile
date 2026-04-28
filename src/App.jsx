@@ -15,6 +15,9 @@ function App() {
     const [dragging, setDragging] = useState(false);
     const [lastMouse, setLastMouse] = useState({ x: 0, y: 0 });
 
+    const [touching, setTouching] = useState(false);
+    const [lastTouchDist, setLastTouchDist] = useState(null);
+
     const MIN_SCALE = 0.1;
     const MAX_SCALE = 10;
 
@@ -100,6 +103,69 @@ function App() {
 
     function handleMouseUp() {
         setDragging(false);
+    }
+    function getTouchDistance(touches) {
+        const dx = touches[0].clientX - touches[1].clientX;
+        const dy = touches[0].clientY - touches[1].clientY;
+        return Math.sqrt(dx * dx + dy * dy);
+    }
+    function handleTouchStart(e) {
+        if (e.touches.length === 1) {
+            setDragging(true);
+            setLastMouse({
+                x: e.touches[0].clientX,
+                y: e.touches[0].clientY
+            });
+        }
+
+        if (e.touches.length === 2) {
+            setTouching(true);
+            setLastTouchDist(getTouchDistance(e.touches));
+        }
+    }
+
+    function handleTouchMove(e) {
+        e.preventDefault();
+
+        // 1 finger pan
+        if (e.touches.length === 1 && dragging) {
+            const dx = e.touches[0].clientX - lastMouse.x;
+            const dy = e.touches[0].clientY - lastMouse.y;
+
+            setOffset(prev => ({
+                x: prev.x + dx,
+                y: prev.y + dy
+            }));
+
+            setLastMouse({
+                x: e.touches[0].clientX,
+                y: e.touches[0].clientY
+            });
+        }
+
+        // 2 finger pinch zoom
+        if (e.touches.length === 2) {
+            const dist = getTouchDistance(e.touches);
+
+            if (lastTouchDist) {
+                const zoomFactor = dist / lastTouchDist;
+
+                const newScale = Math.max(
+                    0.1,
+                    Math.min(10, scale * zoomFactor)
+                );
+
+                setScale(newScale);
+            }
+
+            setLastTouchDist(dist);
+        }
+    }
+
+    function handleTouchEnd() {
+        setDragging(false);
+        setTouching(false);
+        setLastTouchDist(null);
     }
 
     // -------------------------
@@ -260,6 +326,9 @@ function App() {
                 onMouseMove={handleMouseMove}
                 onMouseUp={handleMouseUp}
                 onMouseLeave={handleMouseUp}
+                onTouchStart={handleTouchStart}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={handleTouchEnd}
                 style={{
                     position: "relative",
                     width: "100%",
@@ -269,6 +338,7 @@ function App() {
                     background: "#fafafa",
                     overflow: "hidden",
                     cursor: dragging ? "grabbing" : "grab",
+                    touchAction: "none"
                 }}
             >
                 {image && (
