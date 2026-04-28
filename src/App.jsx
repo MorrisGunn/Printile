@@ -145,15 +145,29 @@ function App() {
 
         // 2 finger pinch zoom
         if (e.touches.length === 2) {
+            const [t1, t2] = e.touches;
+
+            const midX = (t1.clientX + t2.clientX) / 2;
+            const midY = (t1.clientY + t2.clientY) / 2;
+
+            const rect = containerRef.current.getBoundingClientRect();
+
+            const pointX = midX - rect.left;
+            const pointY = midY - rect.top;
+
             const dist = getTouchDistance(e.touches);
 
             if (lastTouchDist) {
                 const zoomFactor = dist / lastTouchDist;
 
-                const newScale = Math.max(
-                    0.1,
-                    Math.min(10, scale * zoomFactor)
-                );
+                let newScale = scale * zoomFactor;
+                newScale = Math.max(0.1, Math.min(10, newScale));
+
+                // adjust offset so zoom centers on pinch midpoint
+                setOffset(prev => ({
+                    x: pointX - (pointX - prev.x) * (newScale / scale),
+                    y: pointY - (pointY - prev.y) * (newScale / scale)
+                }));
 
                 setScale(newScale);
             }
