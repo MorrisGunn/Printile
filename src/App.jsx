@@ -147,29 +147,33 @@ function App() {
         if (e.touches.length === 2) {
             const [t1, t2] = e.touches;
 
-            const midX = (t1.clientX + t2.clientX) / 2;
-            const midY = (t1.clientY + t2.clientY) / 2;
-
             const rect = containerRef.current.getBoundingClientRect();
 
-            const pointX = midX - rect.left;
-            const pointY = midY - rect.top;
+            const midX = (t1.clientX + t2.clientX) / 2 - rect.left;
+            const midY = (t1.clientY + t2.clientY) / 2 - rect.top;
 
             const dist = getTouchDistance(e.touches);
+
+            // IMPORTANT: use local snapshot, not state
+            const currentScale = scale;
+            const currentOffset = offset;
 
             if (lastTouchDist) {
                 const zoomFactor = dist / lastTouchDist;
 
-                let newScale = scale * zoomFactor;
+                let newScale = currentScale * zoomFactor;
                 newScale = Math.max(0.1, Math.min(10, newScale));
 
-                // adjust offset so zoom centers on pinch midpoint
-                setOffset(prev => ({
-                    x: pointX - (pointX - prev.x) * (newScale / scale),
-                    y: pointY - (pointY - prev.y) * (newScale / scale)
-                }));
+                // correct anchored zoom math
+                const scaleRatio = newScale / currentScale;
+
+                const newOffset = {
+                    x: midX - (midX - currentOffset.x) * scaleRatio,
+                    y: midY - (midY - currentOffset.y) * scaleRatio,
+                };
 
                 setScale(newScale);
+                setOffset(newOffset);
             }
 
             setLastTouchDist(dist);
